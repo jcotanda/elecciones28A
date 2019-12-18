@@ -1,0 +1,10 @@
+- http://www.infoelectoral.mir.es/infoelectoral/min/areaDescarga.html?method=inicio
+- https://r-elecciones.netlify.com/
+- http://centrodedescargas.cnig.es/CentroDescargas/
+
+
+Stackoverflow lifeguards :)
+- https://stackoverflow.com/questions/10183292/how-can-i-remove-empty-factors-from-ggplot2-facets
+- https://stackoverflow.com/questions/13548266/define-all-functions-in-one-r-file-call-them-from-another-r-file-how-if-pos
+- https://stackoverflow.com/questions/7531868/how-to-rename-a-single-column-in-a-data-frame
+- https://stackoverflow.com/questions/31518150/gsub-in-r-is-not-replacing-dot

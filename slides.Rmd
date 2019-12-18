@@ -1,0 +1,292 @@
+---
+title: "Algunos mitos y realidades de las elecciones del 28A"
+author: "Amparo Mocholi, Hugo Saiz, Javier Cotanda"
+date: "`r Sys.Date()`"
+output:
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+---
+<!--- Un poco de tuning CSS a las slides -->
+<style>
+
+img {
+max-width:100%
+}
+
+h2 {
+    font-size: 30px;
+    line-height: 35px;
+}
+
+</style>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE, 
+                      cache = FALSE, cache.path = "/caches/", comment = "#>",
+                      collapse = TRUE,  fig.show = "hold",
+                      out.width = "100%", fig.align = "center")
+
+options(encoding = 'UTF-8')
+```
+
+
+
+## Introducción {.columns-2}
+
+- Caso Vox
+- Caso Coste de diputados
+- Caso Compromís y ERC
+
+<blockquote class="twitter-tweet"><p lang="es" dir="ltr">Lo que pediste/Lo que te llegó<br>(Idea <a href="https://twitter.com/conchajua?ref_src=twsrc%5Etfw">@conchajua</a> ) <a href="https://t.co/VGQajKqPle">pic.twitter.com/VGQajKqPle</a></p>&mdash; The Raven (@the_raven77) <a href="https://twitter.com/the_raven77/status/1062091906824441856?ref_src=twsrc%5Etfw">November 12, 2018</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+
+```{r library_setup}
+
+library(tidyverse)
+library(sf)
+library(LAU2boundaries4spain)
+library(viridis)
+
+# cargamos todas las funciones muy últiles para el dearrollo del trabajo, elaboradas por nosotros
+source("funciones.R")
+
+generales28A <- rio::import(here::here("./data/", "generales28A.rdata")) %>% partidosNom(.)
+municipios28A <- rio::import(here::here("./data/", "municipios28A.rdata")) %>% partidosNom(.)
+CCAAProvCodigos <- rio::import(here::here("./data/", "CCAAProvCodigos.rdata")) # With leading 0s
+
+```
+
+# Caso Vox
+
+## ¿Dónde ha sido Vox la fuerza más votada?
+
+```{r vox_predf}
+# Importamos los datos que previamente hemos limpiado para todo el supuesto
+
+pobExtEscanos <- rio::import("./data/poblacion_Extranjera.rdata")
+pobExt <- rio::import("./data/poblacionExtranjera.rdata")
+
+VOX28A <- municipios28A %>% group_by(comunidad, codigo.prov, codigo.muni) %>% top_n(1,votos) %>%
+    filter(partido == "VOX") %>% ungroup() %>% group_by(codigo.prov) %>% 
+  mutate(total.votos = sum(votos), total.muni = n()) %>%
+    ungroup() %>% distinct(provincia, total.muni, total.votos)
+
+VOX28A$provincia <- VOX28A$provincia %>% gsub("Castellón / ", "", .) %>% gsub("Valencia / ", "", .) %>% trimws(., "r")
+
+ggplot(VOX28A, aes(forcats::fct_reorder(provincia, total.muni), total.muni)) + 
+  geom_col(aes(fill = total.votos)) +
+    geom_text(aes(label = total.votos), nudge_y = 2, size=3) +
+    scale_fill_viridis_c(option = "magma", name = "Votos", alpha = 0.8, begin = 0.3, end = 0.7, direction = 1,
+                         guide = guide_colorbar( direction = "horizontal", barheight = unit(2, units = "mm"), 
+                                                 barwidth = unit(50, units = "mm"), draw.ulim = F, 
+                                                 title.position = 'top', title.hjust = 0.5, label.hjust = 0.5
+                         )) +
+    theme_plot() + theme(legend.text = element_text(size = 8)) +
+    labs(title = "Provincias en las que Vox ha sido la fuerza más votada",
+         subtitle = "Número total de municipios por provincias",
+         caption = default_caption) + theme(axis.title.y = element_blank())
+```
+
+## ¿Qué ciudades tienen mayor % de población extranjera?
+
+```{r, include=TRUE, eval=TRUE}
+prov_inmi <- pobExt %>% top_n(14, porcentaje) 
+
+library(treemapify)
+ggplot(prov_inmi, aes(area = porcentaje, fill = porcentaje, label = provincia)) +
+    geom_treemap() +
+    geom_treemap_text(fontface = "italic", colour = "white", place = "centre",
+                      grow = FALSE) + 
+    scale_fill_viridis_c(option = "viridis", name = "", alpha = 0.8, begin = 0.3, end = 0.7, direction = 1,
+                         guide = guide_colorbar( title = "Porcentaje", direction = "horizontal", barheight = unit(2, units = "mm"), 
+                                                 barwidth = unit(50, units = "mm"), draw.ulim = F, 
+                                                 title.position = 'top', title.hjust = 0.5, label.hjust = 0.5
+                         )) + 
+    theme(legend.position = "bottom") +
+    labs(title = "Provincias con mayor porcentaje de población extranjera",
+         caption = "Estadísticas del Padrón Continuo. 1 de Enero de 2019.")
+```
+
+## ¿Y en relación a los demás partidos? {.smaller}
+
+![](./images/vox_plot_1.png)
+
+# Caso Coste Diputados
+
+## ¿A qué partido le ha costado más sacar un diputado y dónde?
+
+```{r, coste_dipu_1}
+costeVotos <- generales28A %>% filter(diputados > 0) %>%  mutate(coste_dipu = votos/diputados) %>% mutate(pct = coste_dipu/poblacion)
+costeVotos$partido <- as.factor(costeVotos$partido)
+
+df3 <- costeVotos %>% group_by(partido) %>% top_n(1, coste_dipu) %>% ungroup()
+
+p <- ggplot(df3, aes(forcats::fct_reorder(partido, coste_dipu), coste_dipu)) + geom_col(aes(fill = provincia)) + 
+    theme_plot() + theme(legend.text = element_text(size=8), legend.position = "bottom") +
+    scale_fill_viridis_d(option="magma", alpha = 0.8, begin = 0, end = 1, 
+                         name = "", guide = guide_legend(nrow = 3, ncol = 4)) + 
+    labs(title = "Circunscripción con el coste por diputados más alto para cada partido") + ylab("")
+
+plotly::ggplotly(p)
+```
+
+## ¿Y si comparamos Castilla - La Mancha, Cataluña, y País Vasco?
+
+```{r}
+costeVotos$codigo.prov <- as.numeric(costeVotos$codigo.prov)
+df4 <- costeVotos %>% filter(codigo.prov %in% c(17,25,43,1,20,48, 2, 13, 16, 19, 45, 8))
+
+ggplot(df4, aes(forcats::fct_reorder(provincia, coste_dipu), coste_dipu/1000, fill=factor(partido))) + geom_col(stat = "identity", position = position_dodge()) + 
+    theme_plot_facet() + 
+    facet_grid(~comunidad, scales = "free", space = "free") + scale_fill_viridis_d(option="magma", alpha = 0.8, begin = 0.1, end = 0.9, name = "") +
+    labs(title = "Votos necesarios para obtener un diputado",
+         caption = default_caption)+
+    ylab("Miles de personas") + xlab("")
+```
+
+
+## ¿Y en términos de población?
+
+```{r, coste_dipu_3}
+ggplot(df4, aes(forcats::fct_reorder(provincia, coste_dipu), pct, fill=factor(partido))) + geom_col(stat = "identity", position = position_dodge()) + 
+    theme_plot_facet() + scale_y_continuous(labels = scales::percent) +
+    facet_grid(~comunidad, scales = "free", space = "free") + scale_fill_viridis_d(option="magma", name = "", alpha = 0.8, begin = 0.1, end = 0.9) +
+    labs(title = "Importancia relativa de un voto para la obtención de un diputado",
+         subtitle = "A mayor porcentaje, más 'valor' tiene el voto del ciudadano", 
+         caption = default_caption) +
+    ylab("Cuánto representa el coste \n por diputado sobre la población") + xlab("")
+```
+
+## El PP a la caza del voto
+
+![](https://i.giphy.com/media/1TdwzqNf6aVUs/giphy.webp)
+
+## El mapa definitivo
+
+![](./images/map_plot_1.png)
+
+# Caso Compromís y ERC
+
+## ¿Dónde han sido más votados?
+
+```{r}
+compromisERC <- municipios28A %>% filter(codigo.prov %in% c("03","12","46", "08","17", "43", "25"), 
+                                      partido %in% c("COMPROMIS-EUPV", "ERC"),
+                                      votos > 0) %>% 
+                mutate(INECodMuni = paste(codigo.prov, codigo.muni, sep = ""),
+                       votos_quantile = ntile(votos, 5)) 
+
+compromisERC_mapa <- left_join(compromisERC, loadGeometry(6, provincias = c("03","12","46", "08","17", "43", "25")))
+
+provinciasLindes <- c("22", "44", "50", "16", "44", "30", "02", "07", "31", "19")
+
+fraSF <- rnaturalearth::ne_countries(scale = "medium", returnclass = "sf") %>% filter(adm0_a3 == "FRA")
+
+plot1 <- ggplot() + geom_sf(data = fraSF, aes(geometry = geometry)) +
+    geom_sf(aes(geometry = geometry), data=filter(loadGeometry(1, provincias = provinciasLindes))) +
+    geom_sf(aes(geometry = geometry, fill=votos_quantile), data=compromisERC_mapa) +
+    scale_fill_viridis(
+        option = "magma", 
+        direction = -1,
+        begin = 0.3, end = 0.8,
+        name = "Votos",
+        # here we use guide_colourbar because it is still a continuous scale --> https://timogrossenbacher.ch/2016/12/beautiful-thematic-maps-with-ggplot2-only/
+        guide = guide_colorbar(
+            direction = "horizontal",
+            barheight = unit(2, units = "mm"),
+            barwidth = unit(50, units = "mm"),
+            draw.ulim = F,
+            title.position = 'top',
+            # some shifting around
+            title.hjust = 0.5,
+            label.hjust = 0.5
+        )) +
+    coord_sf(xlim = c(-1.5, 4), ylim = c(38,42.7)) + theme_map() + 
+  theme(legend.position = "bottom", plot.title = element_text(size = 12) ) + 
+  labs(title="Densidad de votos a Compromís y ERC", caption = default_caption)
+
+plot1
+```
+
+## ¿Hay alguna relación alguna con la edad media?
+
+
+```{r}
+edadmedia <- rio::import(here::here("data", "edadMediaPob2019.rdata")) %>% filter(codigo.prov %in% c("03","12","46", "08","17", "43", "25"))
+
+edadmedia_map <- left_join(edadmedia, loadGeometry(6, provincias = c("03","12","46", "08","17", "43", "25")))
+
+plot2 <-ggplot() + geom_sf(data = fraSF, aes(geometry = geometry)) +
+    geom_sf(data=loadGeometry(3, provinciasLindes), aes(geometry = geometry), alpha = 0.5) +
+    geom_sf(data=edadmedia_map, aes(geometry = geometry, fill = quantile)) + 
+    scale_fill_viridis(
+        option = "magma", 
+        direction = -1,
+        begin = 0.3, end = 0.8,
+        name = "Edad Media",
+        # here we use guide_colourbar because it is still a continuous scale --> https://timogrossenbacher.ch/2016/12/beautiful-thematic-maps-with-ggplot2-only/
+        guide = guide_colorbar(
+            direction = "horizontal",
+            barheight = unit(2, units = "mm"),
+            barwidth = unit(50, units = "mm"),
+            draw.ulim = F,
+            title.position = 'top',
+            # some shifting around
+            title.hjust = 0.5,
+            label.hjust = 0.5
+        )) +
+    coord_sf(xlim = c(-1.5, 4), ylim = c(38,42.7)) + theme_map() + theme(legend.position = "bottom") + 
+  labs(title = "Edad media por municipios",
+       subtitle = "Nota: datos de INE trameados cruzados con la población",
+       caption = default_caption)
+
+gridExtra::grid.arrange(plot1, plot2, ncol=2)
+```
+
+## Comparativa censo-diputados respecto votos
+
+```{r}
+votantes28A <- rio::import("./data/generales28ATipoVoto.rdata") %>% filter(tipo.voto == "total.censo.electoral",
+                                                                           codigo.prov %in% c("03","12","46", "08","17", "43", "25"))
+
+tableCompromis <- generales28A %>% filter(partido %in% c("COMPROMIS-EUPV", "ERC"), votos > 0) %>% left_join(votantes28A) %>% 
+    select(c(3,5,6,7,10))
+colnames(tableCompromis) <- c("Provincia", "Partido", "Nº votos", "Diputados", "Total censo electoral")
+knitr::kable(tableCompromis) 
+```
+
+## Baldoví 0, Rufián 1 {.columns-2}
+<p style="display:inline">
+![](https://media1.tenor.com/images/78a89ba5daa6f329ba8e46cedf224c7d/tenor.gif?itemid=13931683)
+</p><p style="display:inline;float:left;">
+![](https://estaticos.elperiodico.com/resources/jpg/9/6/-1542803730969.jpg)
+</p>
+
+## Encuéntrate
+
+```{r}
+library(DT)
+
+diputadosXprovincia <- generales28A %>% group_by(codigo.prov) %>% mutate(total.diputados = sum(diputados)) %>% distinct(codigo.prov, provincia, total.diputados)
+
+infovotos <- rio::import("./data/municipios28ATipoVoto.rdata") %>%  left_join(diputadosXprovincia) %>%  select(c(2,4,7, 11)) %>% unique()
+dtable <- municipios28A %>% filter(votos > 0) %>% left_join(., infovotos) %>% select(-c(2,4)) %>%  filter(comunidad %in% c("Comunitat Valenciana", "Aragón"))
+dtable$provincia <- chartr('áéíóúñ','aeioun', dtable$provincia)
+dtable$municipio <- chartr('áéíóúñ','aeioun', dtable$municipio)
+dtable$comunidad <- chartr('áéíóúñ','aeioun', dtable$comunidad)
+
+
+
+datatable(dtable)
+
+```
+
+
+## ¡Esto es todo!
+
+![](https://i.giphy.com/media/QubTFlZQKxHOT5zx7E/giphy.webp)
+
+
+Podéis encontrar todo el código en este repositorio de Github [https://github.com/jcotanda/elecciones28A/](https://github.com/jcotanda/elecciones28A/)
