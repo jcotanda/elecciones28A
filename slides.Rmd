@@ -251,9 +251,9 @@ gridExtra::grid.arrange(plot1, plot2, ncol=2)
 votantes28A <- rio::import("./data/generales28ATipoVoto.rdata") %>% filter(tipo.voto == "total.censo.electoral",
                                                                            codigo.prov %in% c("03","12","46", "08","17", "43", "25"))
 
-tableCompromis <- generales28A %>% filter(partido %in% c("COMPROMIS-EUPV", "ERC"), votos > 0) %>% left_join(votantes28A) %>% 
-    select(c(3,5,6,7,10))
-colnames(tableCompromis) <- c("Provincia", "Partido", "Nº votos", "Diputados", "Total censo electoral")
+tableCompromis <- generales28A %>% group_by(codigo.prov) %>% mutate(total.diputados = sum(diputados)) %>% ungroup() %>% filter(partido %in% c("COMPROMIS-EUPV", "ERC"), votos > 0) %>% left_join(votantes28A) %>% 
+mutate(peso = round(diputados / total.diputados * 100, 0)) %>% select(c(3,5,6,7,8, 11, 12))
+colnames(tableCompromis) <- c("Provincia", "Partido", "Nº votos", "Diputados", "Diputados Totales", "Total censo electoral", "Peso")
 knitr::kable(tableCompromis) 
 ```
 
