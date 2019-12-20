@@ -145,7 +145,7 @@ ggplot(diputados28A, aes(forcats::fct_reorder(provincia, poblacion), forcats::fc
 
 ![](./images/vox_plot_1.png)
 
-<a href="./images/vox_plot_1.png" target="_blank">[Ampliar Imágen]</a>
+<a href="./images/vox_plot_1.png" target="_blank">[Ampliar Imagen]</a>
 
 El gráfico anterior muestra la representación de los partidos políticos por provincia y por porcentaje de población extrajera residente. Además, la representación política se distribuye en una escala de colores, de oscuro a claro de menor a mayor representación.
 Para desmentir la idea de que Vox había ganado en provincias con un alto número de población extranjera comparamos los resultados del PSOE y PP. Concluimos que Vox ha tenido mayor representación en provincias grandes y naturalmente con mayor numero de población extranjera. Sin embargo, no se observa una correlación entre la representación y la población inmigrante —como es el caso de Ávila que como hemos podido observar anteriormente ha ganado en 9 municipios— pero si que se observa una correlación positiva entre el tamaño poblacional y la representación. 
